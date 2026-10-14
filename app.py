@@ -94,7 +94,7 @@ def save_settings(settings):
 
 @app.get("/", include_in_schema=False)
 def index():
-    return RedirectResponse(url="/main/")
+    return RedirectResponse(url="/display")
 
 
 @app.get("/admin", include_in_schema=False)
