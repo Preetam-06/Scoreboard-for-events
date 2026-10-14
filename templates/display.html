@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>On the Spot - Live Scoreboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+    <div class="display-container">
+        <header class="display-header">
+            <h1>{{ event_name }}</h1>
+            <div class="event-tag">Live Scoreboard</div>
+        </header>
+
+        <div class="scoreboard table-container neumorphic-card">
+            <table id="displayTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Team Name</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in teams %}
+                    <tr data-team-id="{{ team.id }}" class="display-row" style="--rank: {{ team.rank }}">
+                        <td class="rank-cell">{{ team.rank }}</td>
+                        <td class="name-cell">{{ team.name }}</td>
+                        <td class="points-cell">{{ team.points }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="display-footer">
+            <p>Auto-refreshing every 3 seconds</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', path='display.js') }}"></script>
+</body>
+</html>

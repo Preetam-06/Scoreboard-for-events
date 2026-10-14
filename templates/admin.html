@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>On the Spot - Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="neumorphic-header">
+            <h1>{{ event_name }}</h1>
+            <span class="subtitle">Admin Panel - Score Management</span>
+        </header>
+
+        {% if full_access %}
+        <div class="event-settings neumorphic-card">
+            <label for="eventNameInput">Event name</label>
+            <div class="event-settings-row">
+                <input type="text" id="eventNameInput" value="{{ event_name }}" maxlength="100">
+                <button id="saveEventNameBtn" class="neumorphic-btn primary">Save Event Name</button>
+            </div>
+            <span id="eventNameStatus" class="settings-status" role="status"></span>
+        </div>
+        {% endif %}
+
+        {% if full_access %}
+        <div class="controls neumorphic-card">
+            <div class="control-group">
+                <button id="addTeamBtn" class="neumorphic-btn primary">+ Add Team</button>
+                <button id="resetBtn" class="neumorphic-btn danger">Reset All Scores</button>
+            <a href="/display" target="_blank" class="neumorphic-btn secondary">Open Display</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="table-container neumorphic-card">
+            <table id="scoreTable">
+                <thead>
+                    <tr>
+                        <th>Team No.</th>
+                        <th>Team Name</th>
+                        <th>Points</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in teams %}
+                    <tr data-team-id="{{ team.id }}" class="team-row" style="--rank: {{ team.rank }}">
+                        <td class="rank-cell">{{ team.rank }}</td>
+                        <td class="name-cell">{{ team.name }}</td>
+                        <td class="points-cell">{{ team.points }}</td>
+                        <td class="actions-cell">
+                            <button class="neumorphic-btn-small edit-btn" data-id="{{ team.id }}" data-name="{{ team.name }}" data-points="{{ team.points }}" data-version="{{ team.version }}">Edit</button>
+                            {% if full_access %}<button class="neumorphic-btn-small danger delete-btn" data-id="{{ team.id }}" data-name="{{ team.name }}">Delete</button>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content neumorphic-card">
+            <h2>Edit Team Score</h2>
+            <form id="editForm">
+                <input type="hidden" id="editTeamId">
+                <input type="hidden" id="editTeamVersion">
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" id="editTeamName" required {% if not full_access %}readonly{% endif %}>
+                </div>
+                <div class="form-group">
+                    <label>Points</label>
+                    <input type="number" id="editTeamPoints" min="0" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="neumorphic-btn secondary" id="cancelEdit">Cancel</button>
+                    <button type="submit" class="neumorphic-btn primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if full_access %}
+    <div id="resetModal" class="modal">
+        <div class="modal-content neumorphic-card warning">
+            <h2>⚠️ Confirm Reset</h2>
+            <p>Type <strong>"reset"</strong> to confirm resetting all scores to zero.</p>
+            <input type="text" id="resetInput" placeholder="Type reset here...">
+            <div class="form-actions">
+                <button type="button" class="neumorphic-btn secondary" id="cancelReset">Cancel</button>
+                <button type="button" class="neumorphic-btn danger" id="confirmReset" disabled>Reset All</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModal" class="modal">
+        <div class="modal-content neumorphic-card">
+            <h2>Add New Team</h2>
+            <form id="addForm">
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" id="addTeamName" required placeholder="Enter team name">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="neumorphic-btn secondary" id="cancelAdd">Cancel</button>
+                    <button type="submit" class="neumorphic-btn primary">Add Team</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if full_access %}
+    <script src="{{ url_for('static', path='admin.js') }}"></script>
+    {% else %}
+    <script src="{{ url_for('static', path='score-only.js') }}"></script>
+    {% endif %}
+</body>
+</html>
