@@ -49,7 +49,6 @@ These files are append-only during normal app use. On Vercel, they are temporary
 - **Display**: `/display` — live scoreboard view.
 
 ## Usage
-
 ### Admin Panel
 1. Click **Edit** beside any team to modify name/points
 2. Click **+ Add Team** to add new teams
