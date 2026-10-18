@@ -30,13 +30,16 @@ def db_connection():
     return connection
 
 def default_teams():
-    names = [
-        "Blackwood", "Redline", "Ironclad", "Deadlock", "Nightfall", "Overdrive",
-        "Outlier", "Darkhorse", "Blackout", "Vanguard", "Renegade", "Dominion",
-        "Fortune", "Legacy", "Empire", "Reckoning", "Gryffindor", "Slytherin",
-        "Ravenclaw", "Hufflepuff", "Illuminati", "Titans", "Demigods", "Eternals",
-    ]
-    return [{"id": index, "name": name, "points": 0, "version": 0} for index, name in enumerate(names, start=1)]
+    return [{"id": i, "name": f"TEAM_{i:02d}", "points": 0, "version": 0} for i in range(1, 25)]
+
+def row_as_dict(row, columns):
+    if row is None:
+        return None
+    if isinstance(row, sqlite3.Row):
+        return dict(row)
+    if hasattr(row, "keys"):
+        return {column: row[column] for column in columns}
+    return dict(zip(columns, row))
 
 def initialize_database():
     connection = db_connection()
@@ -47,6 +50,7 @@ def initialize_database():
         legacy = BASE_DIR / "teams.json"
         teams = json.loads(legacy.read_text(encoding="utf-8")) if legacy.exists() else default_teams()
         connection.executemany("INSERT INTO teams (id, name, points, version) VALUES (?, ?, ?, ?)", [(t["id"], t["name"], t.get("points", 0), t.get("version", 0)) for t in teams])
+    connection.executemany("UPDATE teams SET name = ? WHERE id = ?", [(f"TEAM_{i:02d}", i) for i in range(1, 25)])
     if connection.execute("SELECT COUNT(*) FROM settings WHERE key = 'event_name'").fetchone()[0] == 0:
         legacy = BASE_DIR / "settings.json"
         event_name = json.loads(legacy.read_text(encoding="utf-8")).get("event_name", "On the Spot") if legacy.exists() else "On the Spot"
@@ -63,7 +67,7 @@ def load_teams():
     connection = db_connection()
     rows = connection.execute("SELECT id, name, points, version FROM teams").fetchall()
     connection.close()
-    return [dict(row) for row in rows]
+    return [row_as_dict(row, ("id", "name", "points", "version")) for row in rows]
 
 def ranked_teams():
     teams = sorted(load_teams(), key=lambda team: team["points"], reverse=True)
@@ -129,12 +133,13 @@ async def update_team(team_id: int, request: Request):
         if not current:
             connection.close()
             return JSONResponse({"success": False, "message": "Team not found"}, status_code=404)
+        current = row_as_dict(current, ("id", "name", "points", "version"))
         if data.get("version") is not None and int(data["version"]) != current["version"]:
             connection.close()
             return JSONResponse({"success": False, "conflict": True, "message": "This team was updated by someone else. Refresh and try again."}, status_code=409)
         connection.execute("UPDATE teams SET name = ?, points = ?, version = version + 1 WHERE id = ?", (data.get("name", current["name"]), data.get("points", current["points"]), team_id))
         connection.commit()
-        team = dict(connection.execute("SELECT id, name, points, version FROM teams WHERE id = ?", (team_id,)).fetchone())
+        team = row_as_dict(connection.execute("SELECT id, name, points, version FROM teams WHERE id = ?", (team_id,)).fetchone(), ("id", "name", "points", "version"))
         connection.close()
         log_scores("team_updated", load_teams(), {"team_id": team_id})
         return {"success": True, "team": team}
@@ -147,11 +152,12 @@ def delete_team(team_id: int):
         if not deleted:
             connection.close()
             return JSONResponse({"success": False, "message": "Team not found"}, status_code=404)
+        deleted = row_as_dict(deleted, ("id", "name", "points", "version"))
         connection.execute("DELETE FROM teams WHERE id = ?", (team_id,))
         connection.commit()
         connection.close()
         log_scores("team_deleted", load_teams(), {"team_id": team_id, "team_name": deleted["name"]})
-        return {"success": True, "team": dict(deleted)}
+        return {"success": True, "team": deleted}
 
 @app.post("/api/reset")
 async def reset_teams(request: Request):
