@@ -113,16 +113,15 @@ Vercel will redeploy automatically when the GitHub branch is connected.
 
 ## Data and Audit Logs
 
-- `teams.json` stores the current teams, scores, and update versions.
-- `settings.json` stores the event name.
-- `scores_log.jsonl` stores a timestamped full score snapshot after score-related changes.
-- `changes.log` stores a readable audit trail of edits, resets, additions, deletions, and event-name changes.
+- `scoreboard.db` stores teams, scores, settings, and the audit log locally; Vercel uses the configured Turso database.
 
 The app uses version checks so two people editing the same team do not silently overwrite each other. Different teams can be updated independently.
 
 ### Important Vercel storage note
 
-Vercel serverless storage is temporary. `teams.json`, `settings.json`, and the log files may reset after a cold start or redeployment. For permanent production data, replace the file helpers in `app.py` with a hosted database such as Supabase, Neon, Vercel Postgres, or MongoDB.
+The app stores data in SQLite locally (`scoreboard.db`). On Vercel, set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to use a persistent hosted SQLite-compatible Turso/libSQL database. Do not use a local SQLite file or `/tmp` for Vercel production data: serverless instances and deployments do not provide durable shared disk storage.
+
+To configure Vercel, create a Turso database, add the two environment variables in the Vercel project settings, and redeploy. On the first start, the app creates its tables and imports the checked-in `teams.json` as the initial data if the database is empty.
 
 ## Project Structure
 
@@ -132,8 +131,8 @@ events/
 ├── requirements.txt       # Python dependencies
 ├── vercel.json            # Vercel configuration
 ├── api/index.py           # Vercel FastAPI entry point
-├── teams.json             # Current team data
-├── settings.json          # Current event name
+├── teams.json             # Legacy seed data for first database initialization
+├── settings.json          # Legacy event-name seed data
 ├── templates/
 │   ├── admin.html         # Full and score-only admin interface
 │   └── display.html       # Live scoreboard

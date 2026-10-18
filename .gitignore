@@ -1,4 +1,6 @@
 __pycache__/
+scoreboard.db
+scoreboard.db-*
 *.py[cod]
 .venv/
 venv/
