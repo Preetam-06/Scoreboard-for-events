@@ -4,6 +4,7 @@ import os
 import sqlite3
 from threading import Lock
 from datetime import datetime, timezone
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -13,6 +14,9 @@ from fastapi.templating import Jinja2Templates
 BASE_DIR = Path(__file__).resolve().parent
 LOCAL_DB = BASE_DIR / "scoreboard.db"
 TEAM_WRITE_LOCK = Lock()
+TEAM_CACHE_TTL = 0.75
+_teams_cache = None
+_teams_cache_at = 0.0
 
 def timestamp():
     return datetime.now(timezone.utc).isoformat()
@@ -64,10 +68,21 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 def load_teams():
+    global _teams_cache, _teams_cache_at
+    now = time.monotonic()
+    if _teams_cache is not None and now - _teams_cache_at < TEAM_CACHE_TTL:
+        return [team.copy() for team in _teams_cache]
     connection = db_connection()
     rows = connection.execute("SELECT id, name, points, version FROM teams").fetchall()
     connection.close()
-    return [row_as_dict(row, ("id", "name", "points", "version")) for row in rows]
+    _teams_cache = [row_as_dict(row, ("id", "name", "points", "version")) for row in rows]
+    _teams_cache_at = now
+    return [team.copy() for team in _teams_cache]
+
+def invalidate_teams_cache():
+    global _teams_cache, _teams_cache_at
+    _teams_cache = None
+    _teams_cache_at = 0.0
 
 def ranked_teams():
     teams = sorted(load_teams(), key=lambda team: team["points"], reverse=True)
@@ -139,6 +154,7 @@ async def update_team(team_id: int, request: Request):
             return JSONResponse({"success": False, "conflict": True, "message": "This team was updated by someone else. Refresh and try again."}, status_code=409)
         connection.execute("UPDATE teams SET name = ?, points = ?, version = version + 1 WHERE id = ?", (data.get("name", current["name"]), data.get("points", current["points"]), team_id))
         connection.commit()
+        invalidate_teams_cache()
         team = row_as_dict(connection.execute("SELECT id, name, points, version FROM teams WHERE id = ?", (team_id,)).fetchone(), ("id", "name", "points", "version"))
         connection.close()
         log_scores("team_updated", load_teams(), {"team_id": team_id})
@@ -156,6 +172,7 @@ def delete_team(team_id: int):
         connection.execute("DELETE FROM teams WHERE id = ?", (team_id,))
         connection.commit()
         connection.close()
+        invalidate_teams_cache()
         log_scores("team_deleted", load_teams(), {"team_id": team_id, "team_name": deleted["name"]})
         return {"success": True, "team": deleted}
 
@@ -170,6 +187,7 @@ async def reset_teams(request: Request):
         connection.executemany("INSERT INTO teams (id, name, points, version) VALUES (?, ?, 0, 0)", [(t["id"], t["name"]) for t in default_teams()])
         connection.commit()
         connection.close()
+    invalidate_teams_cache()
     log_scores("scores_reset", load_teams())
     return {"success": True, "message": "Scores reset successfully"}
 
@@ -182,6 +200,7 @@ async def add_team(request: Request):
     connection.execute("INSERT INTO teams (id, name, points, version) VALUES (?, ?, 0, 0)", (new_id, name))
     connection.commit()
     connection.close()
+    invalidate_teams_cache()
     team = {"id": new_id, "name": name, "points": 0, "version": 0}
     log_scores("team_added", load_teams(), {"team_id": new_id})
     return {"success": True, "team": team}
