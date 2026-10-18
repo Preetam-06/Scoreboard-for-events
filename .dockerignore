@@ -1,0 +1,10 @@
+.git
+.gitignore
+__pycache__
+*.py[cod]
+*.log
+scoreboard.db
+.venv
+venv
+env
+.env

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 BASE_DIR = Path(__file__).resolve().parent
-LOCAL_DB = BASE_DIR / "scoreboard.db"
+LOCAL_DB = Path(os.environ.get("SCOREBOARD_DB_PATH", str(BASE_DIR / "scoreboard.db")))
 TEAM_WRITE_LOCK = Lock()
 TEAM_CACHE_TTL = 0.75
 _teams_cache = None

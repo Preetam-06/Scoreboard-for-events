@@ -4,10 +4,10 @@ A FastAPI event scoreboard with a live display, full admin controls, score-only 
 
 ## Live URLs
 
-- **Live display:** https://buzzbd.vercel.app/
-- **Live display direct URL:** https://buzzbd.vercel.app/display
-- **Full admin:** https://buzzbd.vercel.app/main/
-- **Score-only admin:** https://buzzbd.vercel.app/admin
+- **Live display:** `http://localhost:5000/`
+- **Live display direct URL:** `http://localhost:5000/display`
+- **Full admin:** `http://localhost:5000/main/`
+- **Score-only admin:** `http://localhost:5000/admin`
 
 The root URL `/` redirects to the live display.
 
@@ -91,37 +91,25 @@ Open locally:
 - http://localhost:5000/main/
 - http://localhost:5000/admin
 
-## Deploy to Vercel
+## Run with Docker
 
-1. Push the project to GitHub.
-2. In Vercel, select **Add New Project**.
-3. Import the GitHub repository.
-4. Leave the framework preset and build command at their defaults or blank.
-5. Deploy.
-
-Vercel uses `vercel.json` and `api/index.py` to serve the FastAPI app.
-
-To deploy future changes:
+Build and start the container:
 
 ```bash
-git add .
-git commit -m "Update scoreboard"
-git push origin main
+docker build -t buzzbd-scoreboard .
+docker run -d --name buzzbd-scoreboard -p 5000:5000 \
+  -e SCOREBOARD_DB_PATH=/data/scoreboard.db \
+  -v buzzbd-scoreboard-data:/data \
+  buzzbd-scoreboard
 ```
 
-Vercel will redeploy automatically when the GitHub branch is connected.
+Open `http://localhost:5000/`. Stop and remove the container with `docker stop buzzbd-scoreboard` and `docker rm buzzbd-scoreboard`.
 
 ## Data and Audit Logs
 
-- `scoreboard.db` stores teams, scores, settings, and the audit log locally; Vercel uses the configured Turso database.
+- `scoreboard.db` stores teams, scores, settings, and the audit log locally. The Docker example mounts a named volume so data survives container replacement.
 
 The app uses version checks so two people editing the same team do not silently overwrite each other. Different teams can be updated independently.
-
-### Important Vercel storage note
-
-The app stores data in SQLite locally (`scoreboard.db`). On Vercel, set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to use a persistent hosted SQLite-compatible Turso/libSQL database. Do not use a local SQLite file or `/tmp` for Vercel production data: serverless instances and deployments do not provide durable shared disk storage.
-
-To configure Vercel, create a Turso database, add the two environment variables in the Vercel project settings, and redeploy. On the first start, the app creates its tables and imports the checked-in `teams.json` as the initial data if the database is empty.
 
 ## Project Structure
 
@@ -129,8 +117,8 @@ To configure Vercel, create a Turso database, add the two environment variables 
 events/
 ├── app.py                 # FastAPI backend and API routes
 ├── requirements.txt       # Python dependencies
-├── vercel.json            # Vercel configuration
-├── api/index.py           # Vercel FastAPI entry point
+├── Dockerfile             # Container image definition
+├── .dockerignore          # Files excluded from the image
 ├── teams.json             # Legacy seed data for first database initialization
 ├── settings.json          # Legacy event-name seed data
 ├── templates/
